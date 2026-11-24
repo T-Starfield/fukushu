@@ -315,7 +315,7 @@ $('#form').addEventListener('submit',e=>{
   const next=addD(d,iv()[0]);
   putItem({id,...v,created:d,stage:0,done:false,next,hist:[{d,r}],upd:Date.now()});
   toast('追加しました。最初の復習は '+label(next)+'（'+rel(next)+'）');
-  if(cont){$('#f-num').value='';$('#f-memo').value='';$('#ferr').textContent='';$('#f-num').focus()}else closeForm();
+  if(cont){$('#ferr').textContent='';const n=$('#f-num');n.focus();try{n.select()}catch(e){}}else closeForm();
 });
 $('#fcancel').addEventListener('click',closeForm);
 $('#fdel').addEventListener('click',()=>{const it=items.get(editing);if(!it)return;const prev=clone(it);delItem(it.id);closeForm();toast('削除しました',()=>putItem(prev))});
