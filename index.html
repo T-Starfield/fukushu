@@ -131,9 +131,9 @@ footer select{font:15px inherit;min-height:44px;padding:0 10px;border:1.5px soli
   <footer>
     <label for="preset">復習の間隔</label>
     <select id="preset">
-      <option value="std">1→3→7→21日（標準）</option>
-      <option value="light">1→7→21日（少なめ）</option>
-      <option value="deep">1→3→7→14→30日（しっかり）</option>
+      <option value="std">1→3→7→14日（標準）</option>
+      <option value="light">1→5→14日（少なめ）</option>
+      <option value="deep">1→2→4→7→14日（しっかり）</option>
     </select>
     <button class="ghost" id="export">バックアップを保存</button>
     <button class="ghost" id="share">共有メニューで保存</button>
@@ -186,7 +186,7 @@ footer select{font:15px inherit;min-height:44px;padding:0 10px;border:1.5px soli
 {
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const P={std:[1,3,7,21],light:[1,7,21],deep:[1,3,7,14,30]};
+const P={std:[1,3,7,14],light:[1,5,14],deep:[1,2,4,7,14]};
 const SYM={o:'〇',m:'△',x:'×'};
 const W='日月火水木金土';
 const SUBJ=['数学IA','数学IIBC','物理基礎','化学基礎','地理','日本史','情報','国語','英語'];
@@ -334,7 +334,7 @@ $('#list').addEventListener('click',e=>{
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b){view=b.dataset.v;render()}});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b){subj=b.dataset.s;render()}});
 $('#q').addEventListener('input',e=>{q=e.target.value;render()});
-$('#preset').addEventListener('change',e=>{settings={...settings,preset:e.target.value};putSettings();toast('間隔を '+iv().join('→')+'日 にしました（次の記録から反映）')});
+$('#preset').addEventListener('change',e=>{settings={...settings,preset:e.target.value};capNext();putSettings();toast('間隔を '+iv().join('→')+'日 にしました（次の記録から反映）')});
 $('#copy').addEventListener('click',()=>{
   const rows=[['科目','教材','番号','メモ','状態','次の復習日','記録'].join('\t')].concat([...items.values()].map(i=>[i.subj,i.book,i.num,(i.memo||'').replace(/\s+/g,' '),i.done?'卒業':'復習中',i.next||'',(i.hist||[]).map(h=>h.d+(SYM[h.r]||'')).join(' ')].join('\t')));
   try{navigator.clipboard.writeText(rows.join('\n')).then(()=>toast(items.size+'問をコピーしました（表計算に貼り付けできます）'),()=>toast('コピーできませんでした'))}catch(err){toast('コピーできませんでした')}
@@ -368,12 +368,13 @@ $('#importfile').addEventListener('change',e=>{
     const prevItems=[...items.values()].map(clone),prevSet=clone(settings);
     items=new Map(j.items.filter(i=>i&&typeof i.id==='string').map(i=>[i.id,i]));
     if(j.settings&&P[j.settings.preset])settings={...settings,preset:j.settings.preset};
-    saveLocal();render();backupNote();
+    capNext();saveLocal();render();backupNote();
     toast(items.size+'問を復元しました',()=>{items=new Map(prevItems.map(i=>[i.id,i]));settings=prevSet;saveLocal();render();backupNote()});
   },()=>toast('ファイルを開けませんでした'));
 });
 setInterval(()=>{if(today()!==lastDay)render()},60000);
-mode='local';loadLocal();render();backupNote();
+function capNext(){const t=today(),mx=Math.max(...iv()),lim=addD(t,mx);let ch=0;items.forEach((it,id)=>{if(!it.done&&it.next&&it.next>lim){items.set(id,{...it,next:lim});ch++}});if(ch)saveLocal();return ch}
+mode='local';loadLocal();capNext();render();backupNote();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 }
 </script>
