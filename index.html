@@ -129,12 +129,6 @@ footer select{font:15px inherit;min-height:44px;padding:0 10px;border:1.5px soli
   <div id="list"></div>
 
   <footer>
-    <label for="preset">復習の間隔</label>
-    <select id="preset">
-      <option value="std">1→3→7→14日（標準）</option>
-      <option value="light">1→5→14日（少なめ）</option>
-      <option value="deep">1→2→4→7→14日（しっかり）</option>
-    </select>
     <button class="ghost" id="export">バックアップを保存</button>
     <button class="ghost" id="share">共有メニューで保存</button>
     <button class="ghost" id="importbtn">バックアップから復元</button>
@@ -155,6 +149,13 @@ footer select{font:15px inherit;min-height:44px;padding:0 10px;border:1.5px soli
     </div>
     <label for="f-num">問題番号・ページ</label><input id="f-num" autocomplete="off" placeholder="例：例題85、p.120 大問3">
     <label for="f-memo">メモ（つまずいた点など）</label><textarea id="f-memo" placeholder="例：場合分けの基準を見落とした"></textarea>
+    <label for="f-iv">復習の間隔</label>
+    <select id="f-iv">
+      <option value="std">標準：1→3→7→14日</option>
+      <option value="light">少なめ：1→5→14日</option>
+      <option value="deep">しっかり：1→2→4→7→14日</option>
+      <option value="short">短期：1→3日</option>
+    </select>
     <div class="add-only">
       <div class="row2">
         <div><label for="f-date">解いた日</label><input id="f-date" type="date"></div>
@@ -186,7 +187,7 @@ footer select{font:15px inherit;min-height:44px;padding:0 10px;border:1.5px soli
 {
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const P={std:[1,3,7,14],light:[1,5,14],deep:[1,2,4,7,14]};
+const P={std:[1,3,7,14],light:[1,5,14],deep:[1,2,4,7,14],short:[1,3]};
 const SYM={o:'〇',m:'△',x:'×'};
 const W='日月火水木金土';
 const SUBJ=['数学IA','数学IIBC','物理基礎','化学基礎','地理','日本史','情報','国語','英語'];
@@ -204,6 +205,9 @@ const today=()=>ymd(new Date());
 const label=s=>{const d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+'（'+W[d.getDay()]+'）'};
 const rel=s=>{const n=diff(today(),s);return n===0?'今日':n===1?'明日':n<0?(-n)+'日遅れ':n+'日後'};
 const iv=()=>P[settings.preset]||P.std;
+const PN={std:'標準',light:'少なめ',deep:'しっかり',short:'短期'};
+const pk=it=>P[it&&it.preset]?it.preset:(P[settings.preset]?settings.preset:'std');
+const ivOf=it=>P[pk(it)];
 const note=s=>{$('#note').textContent=s};
 
 function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j){(j.items||[]).forEach(it=>items.set(it.id,it));if(j.settings)settings=j.settings}}catch(e){}}
@@ -225,7 +229,7 @@ function card(it,t){
     meta=((it.hist||[]).length)+'回目の解き直し・前回 '+(l?SYM[l.r]||'':'')+(late?'・<span class="lt">'+esc(rel(it.next))+'</span>':'');
     acts='<div class="res"><button class="o" data-act="o" aria-label="解けた">〇</button><button class="m" data-act="m" aria-label="あやしい">△</button><button class="x" data-act="x" aria-label="解けない">×</button></div>';
   }else if(view==='up'){
-    meta='次は '+esc(label(it.next))+'・'+esc(rel(it.next))+'・これまで '+(it.hist||[]).map(h=>SYM[h.r]||'').join('');
+    meta='次は '+esc(label(it.next))+'・'+esc(rel(it.next))+'・間隔 '+PN[pk(it)]+'・これまで '+(it.hist||[]).map(h=>SYM[h.r]||'').join('');
     acts='<button class="ghost" data-act="now">今やる</button>';
   }else{
     meta='卒業 '+(l?esc(label(l.d)):'')+'・計'+(it.hist||[]).length+'回 '+(it.hist||[]).map(h=>SYM[h.r]||'').join('');
@@ -246,8 +250,7 @@ function render(){
     const segs=GROUPS.filter(g=>x.by[g.k]).map(g=>'<i style="height:'+(x.by[g.k]/x.n*100)+'%;background:var('+g.c+')"></i>').join('');
     return '<div class="day'+(k===0?' t':'')+(dd.getDay()===0?' sun':'')+'" title="'+esc(tip)+'"><em>'+(x.n||'')+'</em><div class="bar" style="height:'+(x.n?Math.max(6,x.n/mx*72):0)+'%">'+segs+'</div><small>'+(k===0?'今日':dd.getDate())+'</small></div>'}).join('');
   $('#legend').innerHTML=GROUPS.map(g=>'<span><i style="background:var('+g.c+')"></i>'+g.n+'</span>').join('');
-  $('#ivtxt').textContent='間隔：'+iv().join('→')+'日、最後まで〇で卒業。';
-  $('#preset').value=settings.preset||'std';
+  $('#ivtxt').textContent='間隔は問題ごとに追加画面で選べます。最後の間隔まで〇で卒業。';
   $('#n-today').textContent=due.length;$('#n-up').textContent=up.length;$('#n-done').textContent=done.length;
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.v===view)));
   const subs=[...new Set(all.map(i=>i.subj).filter(Boolean))].sort((x,y)=>{const a=SUBJ.indexOf(x),b=SUBJ.indexOf(y);return (a<0?99:a)-(b<0?99:b)||x.localeCompare(y)});
@@ -277,7 +280,7 @@ function toast(msg,undo){const el=$('#toast');$('#tmsg').textContent=msg;const u
 const clone=o=>JSON.parse(JSON.stringify(o));
 
 function review(id,r){
-  const it=items.get(id);if(!it)return;const prev=clone(it),I=iv(),t=today();
+  const it=items.get(id);if(!it)return;const prev=clone(it),I=ivOf(it),t=today();
   let st=Math.min(it.stage||0,I.length-1),done=false,next;
   if(r==='o'){st++;if(st>=I.length){done=true;next=null}else next=addD(t,I[st])}
   else if(r==='m')next=addD(t,I[st]);
@@ -289,6 +292,7 @@ function review(id,r){
 function openForm(id){
   editing=id||null;const f=$('#form');f.dataset.mode=id?'edit':'add';$('#ferr').textContent='';
   const it=id?items.get(id):null;
+  $('#f-iv').value=it?pk(it):(P[settings.preset]?settings.preset:'std');
   $('#ftitle').textContent=id?'問題を編集':'問題を追加';$('#fsave').textContent=id?'保存':'追加';
   {const sv=it?it.subj||'':(subj||$('#f-subj').value||SUBJ[0]);const sel=$('#f-subj');if(sv&&![...sel.options].some(o=>o.value===sv)){const o=document.createElement('option');o.value=sv;o.textContent=sv;sel.appendChild(o)}sel.value=sv||SUBJ[0];}
   $('#f-book').value=it?it.book||'':$('#f-book').value||'';
@@ -307,13 +311,15 @@ $('#form').addEventListener('submit',e=>{
   if(!v.book&&!v.num&&!v.memo){$('#ferr').textContent='教材・問題番号・メモのどれかを入れてください。';return}
   if(editing){
     const it=items.get(editing);if(!it){closeForm();return}
-    const nx=$('#f-next').value;
-    putItem({...clone(it),...v,next:it.done?null:(nx||it.next),upd:Date.now()});closeForm();toast('保存しました');return;
+    const nx=$('#f-next').value,np=$('#f-iv').value;
+    putItem({...clone(it),...v,preset:np,stage:Math.min(it.stage||0,P[np].length-1),next:it.done?null:(nx||it.next),upd:Date.now()});closeForm();toast('保存しました');return;
   }
   const d=$('#f-date').value||today(),r=document.querySelector('input[name=r]:checked').value;
   const id=((crypto.randomUUID&&crypto.randomUUID())||(Date.now().toString(36)+Math.random().toString(36).slice(2))).replace(/[^a-zA-Z0-9-]/g,'');
-  const next=addD(d,iv()[0]);
-  putItem({id,...v,created:d,stage:0,done:false,next,hist:[{d,r}],upd:Date.now()});
+  const preset=P[$('#f-iv').value]?$('#f-iv').value:'std';
+  if(settings.preset!==preset){settings={...settings,preset}}
+  const next=addD(d,P[preset][0]);
+  putItem({id,...v,preset,created:d,stage:0,done:false,next,hist:[{d,r}],upd:Date.now()});
   toast('追加しました。最初の復習は '+label(next)+'（'+rel(next)+'）');
   if(cont){$('#ferr').textContent='';const n=$('#f-num');n.focus();try{n.select()}catch(e){}}else closeForm();
 });
@@ -334,7 +340,6 @@ $('#list').addEventListener('click',e=>{
 document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b){view=b.dataset.v;render()}});
 $('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b){subj=b.dataset.s;render()}});
 $('#q').addEventListener('input',e=>{q=e.target.value;render()});
-$('#preset').addEventListener('change',e=>{settings={...settings,preset:e.target.value};capNext();putSettings();toast('間隔を '+iv().join('→')+'日 にしました（次の記録から反映）')});
 $('#copy').addEventListener('click',()=>{
   const rows=[['科目','教材','番号','メモ','状態','次の復習日','記録'].join('\t')].concat([...items.values()].map(i=>[i.subj,i.book,i.num,(i.memo||'').replace(/\s+/g,' '),i.done?'卒業':'復習中',i.next||'',(i.hist||[]).map(h=>h.d+(SYM[h.r]||'')).join(' ')].join('\t')));
   try{navigator.clipboard.writeText(rows.join('\n')).then(()=>toast(items.size+'問をコピーしました（表計算に貼り付けできます）'),()=>toast('コピーできませんでした'))}catch(err){toast('コピーできませんでした')}
@@ -373,7 +378,7 @@ $('#importfile').addEventListener('change',e=>{
   },()=>toast('ファイルを開けませんでした'));
 });
 setInterval(()=>{if(today()!==lastDay)render()},60000);
-function capNext(){const t=today(),mx=Math.max(...iv()),lim=addD(t,mx);let ch=0;items.forEach((it,id)=>{if(!it.done&&it.next&&it.next>lim){items.set(id,{...it,next:lim});ch++}});if(ch)saveLocal();return ch}
+function capNext(){const t=today();let ch=0;items.forEach((it,id)=>{let n={...it};if(!P[n.preset]){n.preset=pk(n);ch++}const lim=addD(t,Math.max(...P[n.preset]));if(!n.done&&n.next&&n.next>lim){n.next=lim;ch++}items.set(id,n)});if(ch)saveLocal();return ch}
 mode='local';loadLocal();capNext();render();backupNote();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 }
